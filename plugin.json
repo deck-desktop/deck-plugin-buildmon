@@ -1,0 +1,8 @@
+{
+  "id": "buildmon",
+  "name": "Builds",
+  "description": "Watches backend build ids and tells you when one redeploys.",
+  "icon": "Radar",
+  "version": "1.0.0",
+  "minDeck": "0.8.0"
+}
