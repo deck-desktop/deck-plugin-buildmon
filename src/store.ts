@@ -19,9 +19,12 @@ interface Stored {
   watches: Record<string, { buildId: string; history: Entry[] }>;
 }
 
-const DEFAULT_SERVERS: Server[] = [
-  { id: "dev", name: "Dev", url: "https://api-dev.hapster.dev", enabled: true },
-];
+/**
+ * None. This plugin is published, and a default here is a server every new install starts
+ * polling — it used to be one particular company's dev API, switched on. An existing install
+ * keeps the list it saved; a new one adds its own from the empty state.
+ */
+const DEFAULT_SERVERS: Server[] = [];
 
 let servers: Server[] = DEFAULT_SERVERS;
 let watches: Record<string, Watch> = {};

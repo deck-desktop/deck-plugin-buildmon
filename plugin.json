@@ -3,6 +3,6 @@
   "name": "Builds",
   "description": "Watches backend build ids and tells you when one redeploys.",
   "icon": "Radar",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minDeck": "0.8.0"
 }
