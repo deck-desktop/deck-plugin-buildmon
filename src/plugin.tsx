@@ -18,12 +18,14 @@ import {
 import { decode, ago, type Server, type Watch } from "./build";
 import {
   POLL_MS, getServers, getVersion, getWatch, isRunning, nextPollIn, refresh, setRunning,
-  setServers, start, subscribe,
+  setServers, start, stop, subscribe,
 } from "./store";
 
 // Started at module scope, not in the component: Deck unmounts a module when you navigate away,
 // and a monitor that only runs while you are looking at it is not a monitor.
 start();
+/** Called by Deck before a reload re-imports this plugin, so the old copy's timer stops. */
+export const dispose = stop;
 
 const OK = "#3fb950";
 

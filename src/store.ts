@@ -46,6 +46,10 @@ export const getServers = () => servers;
 export const isRunning = () => running;
 export const getWatch = (id: string) => watches[id] ?? emptyWatch(id);
 
+// What was last read or written, so a poll that learned nothing new writes nothing. Every config
+// write wakes every `config-changed` listener in Deck, and this runs once a minute.
+let lastSaved = "";
+
 async function save() {
   const stored: Stored = {
     servers,
@@ -54,7 +58,10 @@ async function save() {
       Object.entries(watches).map(([k, w]) => [k, { buildId: w.buildId, history: w.history }]),
     ),
   };
-  await configWrite(CFG, JSON.stringify(stored)).catch(() => {});
+  const text = JSON.stringify(stored);
+  if (text === lastSaved) return;
+  lastSaved = text;
+  await configWrite(CFG, text).catch(() => {});
 }
 
 async function load() {
@@ -62,6 +69,7 @@ async function load() {
   loaded = true;
   try {
     const t = await configRead(CFG);
+    lastSaved = t;
     if (t.trim()) {
       const s = JSON.parse(t) as Stored;
       if (Array.isArray(s.servers) && s.servers.length) servers = s.servers;
@@ -115,7 +123,14 @@ async function tick() {
   if (results.length) { await save(); emit(); }
 }
 
-/** Start polling. Idempotent — called at import, so a hot reload does not stack timers. */
+/** Stop polling. Deck calls this (through the plugin's `dispose`) before a reload re-imports the
+ *  plugin; the fresh copy starts its own timer. */
+export function stop() {
+  if (timer) clearInterval(timer);
+  timer = null;
+}
+
+/** Start polling. Idempotent within one copy of the module; a reload is covered by `stop`. */
 export function start() {
   if (timer) return;
   void tick();
