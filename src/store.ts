@@ -61,7 +61,7 @@ async function save() {
   const text = JSON.stringify(stored);
   if (text === lastSaved) return;
   lastSaved = text;
-  await configWrite(CFG, text).catch(() => {});
+  await configWrite(CFG, text).catch((e) => console.warn("[buildmon] save failed", e));
 }
 
 async function load() {
@@ -109,7 +109,7 @@ async function pollOne(s: Server) {
 
   if (changed) {
     const d = decode(buildId);
-    void notifyOs(`${s.name} redeployed`, d ? `${d.label} · ${d.commit}` : buildId).catch(() => {});
+    void notifyOs(`${s.name} redeployed`, d ? `${d.label} · ${d.commit}` : buildId).catch((e) => console.warn("[buildmon] redeploy notification failed", e));
   }
   return changed;
 }
