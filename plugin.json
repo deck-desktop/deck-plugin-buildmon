@@ -4,6 +4,6 @@
   "description": "Watches backend build ids and tells you when one redeploys.",
   "icon": "Radar",
   "color": "#fbbf24",
-  "version": "1.0.2",
-  "minDeck": "0.8.0"
+  "version": "1.0.3",
+  "minDeck": "1.5.0"
 }
