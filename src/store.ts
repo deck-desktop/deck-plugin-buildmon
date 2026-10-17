@@ -3,10 +3,12 @@
 // At module scope rather than in the component, for the reason Deck's own CLAUDE.md gives:
 // a module unmounts the moment you navigate away, and a monitor that only watches while you are
 // looking at it is not a monitor. The component subscribes; the polling is independent of it.
-import { configRead, configWrite, notifyOs } from "../shim/bridge.js";
+import { configRead, configWrite } from "../shim/bridge.js";
+import { notify, dismissNotification } from "../shim/ui.js";
 import { emptyWatch, fold, decode, type Entry, type Server, type Watch } from "./build";
 
 const CFG = "plugin-buildmon";
+const SOURCE = "Builds";
 export const POLL_MS = 60_000;
 
 interface Stored {
@@ -33,6 +35,8 @@ let loaded = false;
 // Assumed on until the stored value says otherwise: a first run should watch, and the load
 // below flips it off before the first tick if that is what was saved.
 let running = true;
+// Servers whose going down was announced, so only those announce coming back. Memory only.
+const down = new Set<string>();
 
 // useSyncExternalStore's contract: subscribers are told something changed, and read the value
 // themselves. The version counter is what makes the snapshot comparable by identity.
@@ -104,12 +108,31 @@ async function pollOne(s: Server) {
     error = e instanceof Error ? e.message : String(e);
   }
 
-  const { next, changed } = fold(getWatch(s.id), buildId, at, status, error);
+  const prev = getWatch(s.id);
+  const { next, changed } = fold(prev, buildId, at, status, error);
   watches[s.id] = next;
 
   if (changed) {
     const d = decode(buildId);
-    void notifyOs(`${s.name} redeployed`, d ? `${d.label} · ${d.commit}` : buildId).catch((e) => console.warn("[buildmon] redeploy notification failed", e));
+    const built = d?.builtAt ? ` · built ${new Date(d.builtAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}` : "";
+    notify({
+      kind: "activity", source: SOURCE, key: `deploy:${s.id}`,
+      title: `${s.name} redeployed`, body: (d ? `${d.label} · ${d.commit}` : buildId) + built,
+    });
+  }
+
+  // Reachable to failing is one notification, and failing to reachable takes it down. `polls` is
+  // 0 for the first poll since load (it is not persisted), so the state found at startup is not
+  // announced either way.
+  if (prev.polls > 0) {
+    if (error && !prev.lastError) {
+      down.add(s.id);
+      dismissNotification(SOURCE, `back:${s.id}`);
+      notify({ kind: "error", source: SOURCE, key: `down:${s.id}`, title: `${s.name} unreachable`, body: error });
+    } else if (!error && down.delete(s.id)) {
+      dismissNotification(SOURCE, `down:${s.id}`);
+      notify({ kind: "activity", source: SOURCE, key: `back:${s.id}`, title: `${s.name} is back` });
+    }
   }
   return changed;
 }
