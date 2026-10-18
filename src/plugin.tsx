@@ -27,22 +27,34 @@ start();
 /** Called by Deck before a reload re-imports this plugin, so the old copy's timer stops. */
 export const dispose = stop;
 
-const OK = "#3fb950";
+const OK = "rgb(var(--tone-green-400))";
+const FAIL = "rgb(var(--tone-red-400))";
+const PAUSED = "rgb(var(--tone-amber-400))";
 
 /** The line between history rows. Far fainter than --border-subtle, which is sized for a panel
- *  edge and reads as a hard rule once it repeats down a table. */
-const ROW_LINE = "rgba(255,255,255,0.045)";
+ *  edge and reads as a hard rule once it repeats down a table. On the overlay channel, so a light
+ *  theme gets a dark line rather than an invisible white one. */
+const ROW_LINE = "rgb(var(--overlay-rgb) / 0.045)";
+
+/** A state in its colour: Paused, Failing. */
+function Chip({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span className="shrink-0 rounded-full px-1.5 py-px text-[10.5px]"
+      style={{ color, background: `color-mix(in srgb, ${color} 14%, transparent)` }}>
+      {children}
+    </span>
+  );
+}
 
 /** One bordered stat. The unit of the dashboard's grid. */
 function Card({ label, children, accent, wide }: {
   label: string; children: React.ReactNode; accent?: boolean; wide?: boolean;
 }) {
   return (
-    <div className={"min-w-0 rounded-lg border border-subtle px-4 py-3 " + (wide ? "col-span-2" : "")}
+    <div className={"min-w-0 rounded-lg border border-subtle px-3.5 py-3 " + (wide ? "col-span-2" : "")}
       style={{ background: "var(--bg-card-glass)" }}>
-      <div className="mb-1.5 text-[10px] uppercase tracking-[0.06em] text-text-muted">{label}</div>
-      <div className={"truncate font-mono " + (accent ? "text-[15px] font-semibold" : "text-sm")}
-        style={{ color: accent ? "var(--accent)" : "var(--text-secondary)" }}>
+      <div className="mb-1 text-[11px] text-text-muted">{label}</div>
+      <div className={"truncate font-mono " + (accent ? "text-[14px] font-semibold text-text-primary" : "text-[12.5px] text-text-secondary")}>
         {children}
       </div>
     </div>
@@ -72,17 +84,17 @@ function ServerPanel({ server, watch, now, showTitle }: {
     <section className="mb-6">
       {showTitle && (
         <div className="mb-3 flex items-center gap-2">
-          <span className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: !server.enabled ? "var(--text-muted)" : failing ? "var(--danger)" : OK }} />
-          <h2 className="text-sm font-semibold text-text-primary">{server.name}</h2>
+          <span className="size-2 shrink-0 rounded-full"
+            style={{ background: !server.enabled ? "var(--text-muted)" : failing ? FAIL : OK }} />
+          <h2 className="text-[13px] font-medium text-text-primary">{server.name}</h2>
           <span className="truncate font-mono text-[11px] text-text-muted">{server.url}</span>
-          {!server.enabled && <span className="shrink-0 text-[11px] italic text-text-muted">paused</span>}
+          {!server.enabled && <Chip color={PAUSED}>Paused</Chip>}
         </div>
       )}
 
       {failing && (
-        <div className="mb-3 flex items-start gap-2 rounded-lg border border-subtle px-3 py-2 text-xs"
-          style={{ color: "var(--danger)" }}>
+        <div className="mb-3 flex items-start gap-2 rounded-lg border border-subtle px-3 py-2 text-[12px] text-red-400"
+          style={{ background: "var(--bg-elev)" }}>
           <AlertCircle size={13} className="mt-0.5 shrink-0" />
           <span className="min-w-0 break-words">{watch.lastError}</span>
         </div>
@@ -100,7 +112,7 @@ function ServerPanel({ server, watch, now, showTitle }: {
           {watch.lastChecked ? ago(watch.lastChecked, now) : "—"}
         </Card>
         <Card label="Next poll in">
-          {!isRunning() ? "paused" : watch.lastChecked ? `${Math.ceil(remaining / 1000)}s` : "—"}
+          {!isRunning() ? "Paused" : watch.lastChecked ? `${Math.ceil(remaining / 1000)}s` : "—"}
           {isRunning() && (
             <div className="mt-2 h-1 w-full overflow-hidden rounded-full" style={{ background: "var(--bg-elev)" }}>
               <div className="h-full rounded-full transition-[width] duration-1000 ease-linear"
@@ -113,19 +125,20 @@ function ServerPanel({ server, watch, now, showTitle }: {
 
       {watch.history.length > 0 && (
         <div className="mt-4">
-          <div className="mb-2.5 flex items-baseline gap-2">
-            <h3 className="text-sm font-semibold text-text-primary">Change history</h3>
-            <span className="text-xs text-text-muted">{watch.history.length} changes</span>
+          <div className="mb-1.5 flex h-7 items-center gap-1.5">
+            <h3 className="text-[12px] font-medium text-text-secondary">Change history</h3>
+            <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] text-text-secondary"
+              style={{ background: "var(--bg-elev)" }} title={`${watch.history.length} changes`}>{watch.history.length}</span>
           </div>
           <div className="overflow-hidden rounded-lg border border-subtle">
-            <table className="w-full font-mono text-xs">
+            <table className="w-full font-mono text-[12px]">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-[0.06em] text-text-muted"
+                <tr className="text-left font-sans text-[11px] text-text-muted"
                   style={{ background: "var(--bg-elev)", borderBottom: `1px solid ${ROW_LINE}` }}>
-                  <th className="px-4 py-2.5 font-medium">Commit</th>
-                  <th className="px-4 py-2.5 font-medium">Version</th>
-                  <th className="px-4 py-2.5 font-medium">Built</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Seen</th>
+                  <th className="px-3.5 py-2 font-medium">Commit</th>
+                  <th className="px-3.5 py-2 font-medium">Version</th>
+                  <th className="px-3.5 py-2 font-medium">Built</th>
+                  <th className="px-3.5 py-2 text-right font-medium">Seen</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,13 +152,12 @@ function ServerPanel({ server, watch, now, showTitle }: {
                         borderBottom: i === watch.history.length - 1 ? "none" : `1px solid ${ROW_LINE}`,
                         ...(current ? { background: "var(--accent-soft)" } : {}),
                       }}>
-                      <td className="px-4 py-2.5 font-medium"
-                        style={{ color: current ? "var(--accent)" : "var(--text-primary)" }}>
+                      <td className="px-3.5 py-1.5 font-medium text-text-primary">
                         {ed?.commit ?? e.buildId}
                       </td>
-                      <td className="px-4 py-2.5 text-text-secondary">{ed?.label ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-text-muted">{ed?.builtAt ? stamp(ed.builtAt) : "—"}</td>
-                      <td className="px-4 py-2.5 text-right text-text-muted" title={stamp(e.seenAt)}>
+                      <td className="px-3.5 py-1.5 text-text-secondary">{ed?.label ?? "—"}</td>
+                      <td className="px-3.5 py-1.5 text-text-muted">{ed?.builtAt ? stamp(ed.builtAt) : "—"}</td>
+                      <td className="px-3.5 py-1.5 text-right text-text-muted" title={stamp(e.seenAt)}>
                         {ago(e.seenAt, now)}
                       </td>
                     </tr>
@@ -179,15 +191,15 @@ function ServerList({ servers, onChange }: { servers: Server[]; onChange: (s: Se
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-0.5">
       {servers.map((s) => (
-        <div key={s.id} className="flex items-center gap-2 rounded-lg border border-subtle px-3 py-2">
+        <div key={s.id} className="group flex h-7 items-center gap-2 rounded-md px-1.5 text-[12.5px] transition-colors hover:bg-white/5">
           <button onClick={() => onChange(servers.map((x) => x.id === s.id ? { ...x, enabled: !x.enabled } : x))}
             title={s.enabled ? "Pause" : "Resume"}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded border"
+            className="flex size-[13px] shrink-0 items-center justify-center rounded-[3px] border"
             style={{ borderColor: s.enabled ? "var(--accent)" : "var(--border-strong)",
               background: s.enabled ? "var(--accent)" : "transparent" }}>
-            {s.enabled && <Check size={11} color="#fff" />}
+            {s.enabled && <Check size={9} strokeWidth={3.5} className="text-white" />}
           </button>
           <button
             onClick={() => setRename({
@@ -203,11 +215,11 @@ function ServerList({ servers, onChange }: { servers: Server[]; onChange: (s: Se
               },
             })}
             title="Rename"
-            className="text-sm text-text-primary transition hover:text-accent"
+            className="shrink-0 text-text-primary transition-colors hover:underline"
           >
             {s.name}
           </button>
-          <span className="truncate font-mono text-[11px] text-text-muted">{s.url}</span>
+          <span className="min-w-0 truncate font-mono text-[11px] text-text-muted">{s.url}</span>
           <button
             onClick={() => setConfirm({
               title: `Stop watching ${s.name}?`,
@@ -221,7 +233,7 @@ function ServerList({ servers, onChange }: { servers: Server[]; onChange: (s: Se
               },
             })}
             title="Remove — its history goes too"
-            className="ml-auto shrink-0 rounded p-1 text-text-muted transition hover:text-text-primary">
+            className="ml-auto grid size-5 shrink-0 place-items-center rounded text-text-muted opacity-0 transition hover:bg-white/10 hover:text-red-400 focus:opacity-100 group-hover:opacity-100">
             <X size={13} />
           </button>
         </div>
@@ -230,15 +242,15 @@ function ServerList({ servers, onChange }: { servers: Server[]; onChange: (s: Se
       <ConfirmDialog state={confirm} onClose={() => setConfirm(null)} />
       <NamePrompt state={rename} onClose={() => setRename(null)} />
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pt-1">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name"
-          className="h-8 w-28 shrink-0 rounded-md border border-subtle bg-transparent px-2 text-xs text-text-primary outline-none focus:border-[var(--accent)]" />
+          className="h-8 w-28 shrink-0 rounded-lg border border-subtle bg-elev px-2.5 text-[12.5px] text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-[var(--accent)]" />
         <input value={url} onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") add(); }}
           placeholder="https://api-dev.example.com"
-          className="h-8 min-w-0 flex-1 rounded-md border border-subtle bg-transparent px-2 font-mono text-xs text-text-primary outline-none focus:border-[var(--accent)]" />
+          className="h-8 min-w-0 flex-1 rounded-lg border border-subtle bg-elev px-2.5 font-mono text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-[var(--accent)]" />
         <button onClick={add}
-          className="flex h-8 shrink-0 items-center gap-1 rounded-md border border-subtle px-2.5 text-xs text-text-secondary transition hover:border-strong hover:text-text-primary">
+          className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-subtle bg-elev px-3 text-[12px] text-text-secondary transition-colors hover:border-strong hover:text-text-primary">
           <Plus size={12} /> Add
         </button>
       </div>
@@ -264,56 +276,70 @@ export default function Builds() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden p-6">
-      <div className="mb-5 flex items-center gap-3">
-        <Radar size={18} style={{ color: "var(--accent)" }} />
-        <h1 className="text-lg font-semibold text-text-primary">Builds</h1>
+      <div className="mb-4 flex items-center gap-2.5">
+        <Radar size={16} className="shrink-0 text-text-muted" />
+        <h1 className="text-[15px] font-semibold text-text-primary">Builds</h1>
         {/* With one server its name belongs up here rather than in a second header below; with
             several, each panel names itself and this just counts them. */}
         {only ? (
           <span className="flex min-w-0 items-center gap-2">
-            <span className="h-2 w-2 shrink-0 rounded-full"
+            <span className="size-2 shrink-0 rounded-full"
               style={{ background: !running || !only.enabled ? "var(--text-muted)"
-                : getWatch(only.id).lastError ? "var(--danger)" : OK }} />
-            <span className="shrink-0 text-sm font-medium text-text-secondary">{only.name}</span>
+                : getWatch(only.id).lastError ? FAIL : OK }} />
+            <span className="shrink-0 text-[12.5px] font-medium text-text-secondary">{only.name}</span>
             <span className="truncate font-mono text-[11px] text-text-muted">{only.url}</span>
           </span>
         ) : (
-          <span className="text-[11px] text-text-muted">
+          <span className="text-[11.5px] text-text-muted">
             {servers.filter((s) => s.enabled).length} watched
           </span>
         )}
-        <span className="shrink-0 text-[11px] text-text-muted">
-          {running ? `every ${POLL_MS / 1000}s` : "paused"}
-        </span>
-        <span className="ml-auto flex items-center gap-1">
+        {running
+          ? <span className="shrink-0 text-[11.5px] text-text-muted">every {POLL_MS / 1000}s</span>
+          : <Chip color={PAUSED}>Paused</Chip>}
+        <span className="ml-auto flex items-center gap-0.5">
           <button onClick={() => void setRunning(!running)}
             title={running ? "Pause polling" : "Resume polling"}
-            className="rounded-md p-1.5 transition hover:bg-white/5"
-            style={{ color: running ? "var(--text-muted)" : "var(--accent)" }}>
+            className={"grid size-7 place-items-center rounded-lg transition-colors hover:bg-white/5 " +
+              (running ? "text-text-muted hover:text-text-primary" : "text-[var(--accent)]")}>
             {running ? <Pause size={14} /> : <Play size={14} />}
           </button>
           <button onClick={() => setShowServers((v) => !v)} title="Servers"
-            className="rounded-md p-1.5 transition hover:bg-white/5"
-            style={{ color: showServers ? "var(--accent)" : "var(--text-muted)" }}>
+            className={"grid size-7 place-items-center rounded-lg transition-colors " +
+              (showServers ? "text-text-primary" : "text-text-muted hover:bg-white/5 hover:text-text-primary")}
+            style={showServers ? { background: "var(--accent-soft)" } : undefined}>
             <ServerIcon size={14} />
           </button>
           <button onClick={() => { setBusy(true); void refresh().finally(() => setBusy(false)); }}
             disabled={busy} title="Poll now"
-            className="rounded-md p-1.5 text-text-muted transition hover:bg-white/5 hover:text-text-primary disabled:opacity-40">
+            className="grid size-7 place-items-center rounded-lg text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary disabled:opacity-40">
             <RotateCw size={14} className={busy ? "animate-spin" : ""} />
           </button>
         </span>
       </div>
 
       {showServers && (
-        <div className="mb-5 rounded-xl border border-subtle p-3" style={{ background: "var(--bg-card-glass)" }}>
+        <div className="mb-4 rounded-lg border border-subtle p-2" style={{ background: "var(--bg-card-glass)" }}>
           <ServerList servers={servers} onChange={(s) => void setServers(s)} />
         </div>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto scroll-thin">
         {servers.length === 0
-          ? <p className="text-sm text-text-muted">No servers yet — add one with the server button above.</p>
+          ? !showServers && (
+            <div className="flex max-w-md items-start gap-2.5 rounded-lg border border-subtle px-3 py-3 text-[12px] leading-relaxed text-text-muted"
+              style={{ background: "var(--bg-elev)" }}>
+              <ServerIcon size={16} className="mt-0.5 shrink-0" />
+              <div className="flex flex-col items-start gap-2">
+                <span>No servers yet. Add a backend's URL and this checks its build id every {POLL_MS / 1000}s, and tells you when it redeploys.</span>
+                <button onClick={() => setShowServers(true)}
+                  className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-medium text-white transition hover:brightness-110"
+                  style={{ background: "var(--accent)" }}>
+                  <Plus size={13} /> Add a server
+                </button>
+              </div>
+            </div>
+          )
           : servers.map((s) => (
               <ServerPanel key={s.id} server={s} watch={getWatch(s.id)} now={now}
                 showTitle={servers.length > 1} />
@@ -354,7 +380,7 @@ export function Status() {
   const failing = !!newest?.watch.lastError;
   // Paused is the state most worth flagging: a stale build id looks identical to a current one,
   // and the only difference is whether anything is still checking.
-  const color = !running ? "var(--text-muted)" : failing ? "var(--danger)" : "var(--accent)";
+  const color = !running ? PAUSED : failing ? FAIL : "var(--text-secondary)";
   const label = !newest ? "no build yet"
     : d ? `${d.label} · ${d.commit}`
     : newest.watch.buildId.slice(0, 18);
@@ -377,16 +403,16 @@ export function Status() {
           const w = getWatch(s.id);
           const sd = decode(w.buildId);
           return (
-            <div key={s.id} className="px-2.5 py-1.5 text-[11px]">
+            <div key={s.id} className="px-3.5 py-1.5 text-[11.5px]">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="truncate text-text-primary">{s.name}</span>
-                <span className="shrink-0 text-[10px] text-text-muted">
+                <span className="shrink-0 text-[10.5px] text-text-muted">
                   {w.lastChecked ? ago(w.lastChecked) : "never"}
                 </span>
               </div>
-              <div className="truncate text-[10px] text-text-muted">
+              <div className="truncate font-mono text-[10.5px] text-text-muted">
                 {w.lastError
-                  ? <span style={{ color: "var(--danger)" }}>{w.lastError}</span>
+                  ? <span className="font-sans text-red-400">{w.lastError}</span>
                   : sd ? `${sd.label} · ${sd.commit}` : w.buildId || "no build yet"}
               </div>
             </div>
@@ -398,13 +424,13 @@ export function Status() {
       <div className="flex gap-1 border-t border-subtle p-1.5">
         <button
           onClick={() => { void refresh(); }}
-          className="flex-1 rounded px-2 py-1 text-[11px] text-text-secondary transition hover:bg-white/10 hover:text-text-primary"
+          className="flex h-6 flex-1 items-center justify-center rounded-md px-2 text-[11.5px] text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
         >
           Check now
         </button>
         <button
           onClick={() => { void setRunning(!running); }}
-          className="flex-1 rounded px-2 py-1 text-[11px] text-text-secondary transition hover:bg-white/10 hover:text-text-primary"
+          className="flex h-6 flex-1 items-center justify-center rounded-md px-2 text-[11.5px] text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
         >
           {running ? "Pause" : "Resume"}
         </button>
@@ -413,7 +439,7 @@ export function Status() {
             setOpen(false);
             window.dispatchEvent(new CustomEvent("deck-navigate", { detail: "buildmon" }));
           }}
-          className="flex-1 rounded px-2 py-1 text-[11px] text-text-secondary transition hover:bg-white/10 hover:text-text-primary"
+          className="flex h-6 flex-1 items-center justify-center rounded-md px-2 text-[11.5px] text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
         >
           Open
         </button>
